@@ -8,7 +8,7 @@ import { WalletRPC } from '../../../../../plugins/Wallet/messages'
 import { useAsyncFn } from 'react-use'
 import Services from '../../../../service'
 import { LoadingButton } from '@material-ui/lab'
-import { useHistory, useLocation } from 'react-router'
+import { useHistory, useLocation } from 'react-router-dom'
 import { PopupRoutes } from '../../../index'
 import { useRejectHandler } from '../hooks/useRejectHandler'
 

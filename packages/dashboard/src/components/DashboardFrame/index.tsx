@@ -21,7 +21,7 @@ import { Navigation } from './Navigation'
 import { MaskNotSquareIcon } from '@masknet/icons'
 import { memo } from 'react'
 import { FeaturePromotions } from './FeaturePromotions'
-import { useLocation } from 'react-router'
+import { useLocation } from 'react-router-dom'
 import { RoutePaths } from '../../type'
 
 const featurePromotionsEnabled = [RoutePaths.Wallets, RoutePaths.WalletsTransfer, RoutePaths.WalletsHistory]

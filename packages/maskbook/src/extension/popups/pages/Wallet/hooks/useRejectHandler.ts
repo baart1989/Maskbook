@@ -1,6 +1,6 @@
 import type { JsonRpcPayload } from 'web3-core-helpers'
 import type { EthereumRpcComputed } from '@masknet/web3-shared'
-import { useLocation } from 'react-router'
+import { useLocation } from 'react-router-dom'
 import Services from '../../../../service'
 import { useCallback, useEffect } from 'react'
 
