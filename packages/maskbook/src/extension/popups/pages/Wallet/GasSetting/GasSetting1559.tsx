@@ -1,6 +1,5 @@
-import { makeStyles } from '@masknet/theme'
 import { memo, useEffect, useMemo, useState } from 'react'
-import { EthereumRpcType, useChainId, useNativeTokenDetailed } from '@masknet/web3-shared'
+import { EthereumRpcType, formatWeiToGwei, useChainId, useNativeTokenDetailed } from '@masknet/web3-shared'
 import { useAsync, useAsyncFn, useUpdateEffect } from 'react-use'
 import { WalletRPC } from '../../../../../plugins/Wallet/messages'
 import Services from '../../../../service'
@@ -12,86 +11,31 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Typography } from '@material-ui/core'
 import { StyledInput } from '../../../components/StyledInput'
 import { LoadingButton } from '@material-ui/lab'
-import { isEmpty, noop } from 'lodash-es'
+import { isEmpty } from 'lodash-es'
 import { useUnconfirmedRequest } from '../hooks/useUnConfirmedRequest'
-import { useHistory, useLocation } from 'react-router'
-import { PopupRoutes } from '../../../index'
-import { useRejectHandler } from '../hooks/useRejectHandler'
 import { useNativeTokenPrice } from '../../../../../plugins/Wallet/hooks/useTokenPrice'
-
-const useStyles = makeStyles()((theme) => ({
-    options: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3,1fr)',
-        gap: 10,
-        cursor: 'pointer',
-        width: '100%',
-        overflowX: 'scroll',
-        '& > *': {
-            backgroundColor: '#f7f9fa',
-            borderRadius: 8,
-            padding: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-        },
-    },
-    optionsTitle: {
-        color: '#7B8192',
-        fontSize: 16,
-        lineHeight: '22px',
-    },
-    gasPrice: {
-        fontSize: 12,
-        lineHeight: '16px',
-    },
-    gasUSD: {
-        color: '#7B8192',
-        fontSize: 12,
-        lineHeight: '14px',
-        wordBreak: 'break-all',
-    },
-    or: {
-        display: 'flex',
-        justifyContent: 'center',
-    },
-    label: {
-        color: '#1C68F3',
-        fontSize: 12,
-        lineHeight: '16px',
-        margin: '10px 0',
-    },
-    selected: {
-        backgroundColor: '#1C68F3',
-        '& > *': {
-            color: '#ffffff!important',
-        },
-    },
-    button: {
-        marginTop: 10,
-        padding: '9px 10px',
-        borderRadius: 20,
-    },
-}))
+import { useStyles } from './useGasSettingStyles'
 
 const HIGH_FEE_WARNING_MULTIPLIER = 1.5
 
-export const GasSetting1559 = memo(() => {
+interface Props {
+    onConfirm?: () => void
+}
+
+export const GasSetting1559 = memo<Props>(({ onConfirm }) => {
     const { classes } = useStyles()
     const { t } = useI18N()
     const chainId = useChainId()
-    const location = useLocation()
-    const history = useHistory()
     const [selected, setOption] = useState<number | null>(null)
     const { value: nativeToken } = useNativeTokenDetailed()
     const nativeTokenPrice = useNativeTokenPrice(nativeToken?.chainId)
 
     const { value: gasNow } = useAsync(async () => {
-        const response = await WalletRPC.getEstimateGasFees(chainId)
+        const { data } = await WalletRPC.getGasPriceDictFromDeBank(chainId)
         return {
-            slow: response?.low,
-            standard: response?.medium,
-            fast: response?.high,
+            slow: formatWeiToGwei(data.slow.price).toString(),
+            standard: formatWeiToGwei(data.normal.price).toString(),
+            fast: formatWeiToGwei(data.fast.price).toString(),
         }
     }, [chainId])
 
@@ -101,15 +45,15 @@ export const GasSetting1559 = memo(() => {
         () => [
             {
                 title: t('popups_wallet_gas_fee_settings_low'),
-                content: gasNow?.slow,
+                gasPrice: gasNow?.slow,
             },
             {
                 title: t('popups_wallet_gas_fee_settings_medium'),
-                content: gasNow?.standard,
+                gasPrice: gasNow?.standard,
             },
             {
                 title: t('popups_wallet_gas_fee_settings_high'),
-                content: gasNow?.fast,
+                gasPrice: gasNow?.fast,
             },
         ],
         [gasNow],
@@ -145,16 +89,12 @@ export const GasSetting1559 = memo(() => {
                         t('wallet_transfer_error_max_priority_gas_fee_positive'),
                     )
                     .refine((value) => {
-                        return new BigNumber(value).isGreaterThanOrEqualTo(
-                            gasNow?.slow?.suggestedMaxPriorityFeePerGas ?? 0,
-                        )
+                        return new BigNumber(value).isGreaterThanOrEqualTo(gasNow?.slow ?? 0)
                     }, t('wallet_transfer_error_max_priority_gas_fee_too_low'))
                     .refine(
                         (value) =>
                             new BigNumber(value).isLessThan(
-                                new BigNumber(gasNow?.fast?.suggestedMaxPriorityFeePerGas ?? 0).multipliedBy(
-                                    HIGH_FEE_WARNING_MULTIPLIER,
-                                ),
+                                new BigNumber(gasNow?.fast ?? 0).multipliedBy(HIGH_FEE_WARNING_MULTIPLIER),
                             ),
                         t('wallet_transfer_error_max_priority_gas_fee_too_high'),
                     ),
@@ -162,16 +102,13 @@ export const GasSetting1559 = memo(() => {
                     .string()
                     .min(1, t('wallet_transfer_error_maxFee_absence'))
                     .refine(
-                        (value) =>
-                            new BigNumber(value).isGreaterThanOrEqualTo(gasNow?.slow?.suggestedMaxFeePerGas ?? 0),
+                        (value) => new BigNumber(value).isGreaterThanOrEqualTo(gasNow?.slow ?? 0),
                         t('wallet_transfer_error_max_fee_too_low'),
                     )
                     .refine(
                         (value) =>
                             new BigNumber(value).isLessThan(
-                                new BigNumber(gasNow?.fast?.suggestedMaxFeePerGas ?? 0).multipliedBy(
-                                    HIGH_FEE_WARNING_MULTIPLIER,
-                                ),
+                                new BigNumber(gasNow?.fast ?? 0).multipliedBy(HIGH_FEE_WARNING_MULTIPLIER),
                             ),
                         t('wallet_transfer_error_max_fee_too_high'),
                     ),
@@ -223,15 +160,14 @@ export const GasSetting1559 = memo(() => {
 
     useEffect(() => {
         if (selected) {
-            setValue('maxPriorityFeePerGas', options[selected].content?.suggestedMaxPriorityFeePerGas ?? '')
-            setValue('maxFeePerGas', options[selected].content?.suggestedMaxFeePerGas ?? '')
+            setValue('maxPriorityFeePerGas', options[selected].gasPrice ?? '')
+            setValue('maxFeePerGas', options[selected].gasPrice ?? '')
         }
     }, [selected, setValue, options])
 
     const [{ loading }, handleConfirm] = useAsyncFn(
         async (data: zod.infer<typeof schema>) => {
             if (value) {
-                const toBeClose = new URLSearchParams(location.search).get('toBeClose')
                 const config = {
                     ...value.payload.params[0],
                     gas: data.gasLimit,
@@ -245,33 +181,27 @@ export const GasSetting1559 = memo(() => {
                     ...value.payload,
                     params: [config, ...value.payload.params],
                 })
-                if (toBeClose) {
-                    window.close()
-                } else {
-                    history.replace(PopupRoutes.TokenDetail)
-                }
+                onConfirm?.()
             }
         },
-        [value, location.search, history],
+        [value, onConfirm],
     )
 
     const onSubmit = handleSubmit((data) => handleConfirm(data))
 
-    useRejectHandler(noop, value)
-
     return (
         <>
             <div className={classes.options}>
-                {options.map(({ title, content }, index) => (
+                {options.map(({ title, gasPrice }, index) => (
                     <div
                         key={index}
                         onClick={() => setOption(index)}
                         className={selected === index ? classes.selected : undefined}>
                         <Typography className={classes.optionsTitle}>{title}</Typography>
-                        <Typography>{new BigNumber(content?.suggestedMaxFeePerGas ?? 0).toFixed(2)} Gwei</Typography>
+                        <Typography>{new BigNumber(gasPrice ?? 0).toFixed(2)} Gwei</Typography>
                         <Typography className={classes.gasUSD}>
                             {t('popups_wallet_gas_fee_settings_usd', {
-                                usd: new BigNumber(content?.suggestedMaxFeePerGas ?? 0)
+                                usd: new BigNumber(gasPrice ?? 0)
                                     .div(10 ** 9)
                                     .times(nativeTokenPrice)
                                     .toPrecision(3),

@@ -1,92 +1,30 @@
-import { makeStyles } from '@masknet/theme'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { useI18N } from '../../../../../utils'
 import { useAsync, useAsyncFn, useUpdateEffect } from 'react-use'
 import { WalletRPC } from '../../../../../plugins/Wallet/messages'
 import Services from '../../../../service'
 import { useUnconfirmedRequest } from '../hooks/useUnConfirmedRequest'
-import {
-    EthereumRpcType,
-    formatWeiToGwei,
-    getChainFromChainId,
-    useChainId,
-    useNativeTokenDetailed,
-} from '@masknet/web3-shared'
+import { EthereumRpcType, formatWeiToGwei, useChainId, useNativeTokenDetailed } from '@masknet/web3-shared'
 import BigNumber from 'bignumber.js'
 import { z as zod } from 'zod'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Typography } from '@material-ui/core'
-import { StyledInput } from '../../../components/StyledInput'
 import { LoadingButton } from '@material-ui/lab'
-import { isEmpty, noop } from 'lodash-es'
-import { useHistory, useLocation } from 'react-router'
-import { PopupRoutes } from '../../../index'
-import { useRejectHandler } from '../hooks/useRejectHandler'
+import { isEmpty } from 'lodash-es'
+import { StyledInput } from '../../../components/StyledInput'
 import { useNativeTokenPrice } from '../../../../../plugins/Wallet/hooks/useTokenPrice'
+import { useStyles } from './useGasSettingStyles'
 
-const useStyles = makeStyles()((theme) => ({
-    options: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3,1fr)',
-        gap: 10,
-        cursor: 'pointer',
-        width: '100%',
-        overflowX: 'scroll',
-        '& > *': {
-            backgroundColor: '#f7f9fa',
-            borderRadius: 8,
-            padding: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-        },
-    },
-    optionsTitle: {
-        color: '#7B8192',
-        fontSize: 16,
-        lineHeight: '22px',
-    },
-    gasPrice: {
-        fontSize: 12,
-        lineHeight: '16px',
-    },
-    gasUSD: {
-        color: '#7B8192',
-        fontSize: 12,
-        lineHeight: '14px',
-        wordBreak: 'break-all',
-    },
-    or: {
-        display: 'flex',
-        justifyContent: 'center',
-    },
-    label: {
-        color: '#1C68F3',
-        fontSize: 12,
-        lineHeight: '16px',
-        margin: '10px 0',
-    },
-    selected: {
-        backgroundColor: '#1C68F3',
-        '& > *': {
-            color: '#ffffff!important',
-        },
-    },
-    button: {
-        marginTop: 10,
-        padding: '9px 10px',
-        borderRadius: 20,
-    },
-}))
+interface Props {
+    onConfirm?: () => void
+}
 
-export const Prior1559GasSetting = memo(() => {
+export const Prior1559GasSetting = memo<Props>(({ onConfirm }) => {
     const { classes } = useStyles()
     const { t } = useI18N()
     const chainId = useChainId()
     const { value } = useUnconfirmedRequest()
-    const location = useLocation()
-    const history = useHistory()
     const [selected, setOption] = useState<number | null>(null)
     const { value: nativeToken } = useNativeTokenDetailed()
 
@@ -94,11 +32,11 @@ export const Prior1559GasSetting = memo(() => {
 
     //#region Get gas now from debank
     const { value: gasNow } = useAsync(async () => {
-        const response = await WalletRPC.getGasPriceDictFromDeBank(getChainFromChainId(chainId)?.toLowerCase() ?? '')
+        const { data } = await WalletRPC.getGasPriceDictFromDeBank(chainId)
         return {
-            slow: response.data.slow.price,
-            standard: response.data.normal.price,
-            fast: response.data.fast.price,
+            slow: data.slow.price,
+            standard: data.normal.price,
+            fast: data.fast.price,
         }
     }, [chainId])
     //#endregion
@@ -187,8 +125,6 @@ export const Prior1559GasSetting = memo(() => {
     const [{ loading }, handleConfirm] = useAsyncFn(
         async (data: zod.infer<typeof schema>) => {
             if (value) {
-                const toBeClose = new URLSearchParams(location.search).get('toBeClose')
-
                 const config = {
                     ...value.payload.params[0],
                     gas: data.gasLimit,
@@ -200,20 +136,13 @@ export const Prior1559GasSetting = memo(() => {
                     ...value.payload,
                     params: [config, ...value.payload.params],
                 })
-
-                if (toBeClose) {
-                    window.close()
-                } else {
-                    history.replace(PopupRoutes.TokenDetail)
-                }
+                onConfirm?.()
             }
         },
-        [value],
+        [value, onConfirm],
     )
 
     const onSubmit = handleSubmit((data) => handleConfirm(data))
-
-    useRejectHandler(noop, value)
 
     return (
         <>
@@ -224,7 +153,7 @@ export const Prior1559GasSetting = memo(() => {
                         onClick={() => setOption(index)}
                         className={selected === index ? classes.selected : undefined}>
                         <Typography className={classes.optionsTitle}>{title}</Typography>
-                        <Typography>{formatWeiToGwei(gasPrice ?? 0).toString()} Gwei</Typography>
+                        <Typography>{formatWeiToGwei(gasPrice ?? 0).toFixed(2)} Gwei</Typography>
                         <Typography className={classes.gasUSD}>
                             {t('popups_wallet_gas_fee_settings_usd', {
                                 usd: new BigNumber(gasPrice)

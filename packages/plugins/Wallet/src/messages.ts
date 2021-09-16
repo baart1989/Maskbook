@@ -74,6 +74,10 @@ export type WalletStatusDialogEvent = {
     open: boolean
 }
 
+export type GasSettingDialogEvent = {
+    open: boolean
+}
+
 export type WalletRenameDialogEvent = {
     open: boolean
     wallet: Wallet | null
@@ -182,6 +186,11 @@ export interface WalletMessage {
      * Wallet status dialog
      */
     walletRenameDialogUpdated: WalletRenameDialogEvent
+
+    /**
+     * Wallet status dialog
+     */
+    gasSettingDialogUpdated: GasSettingDialogEvent
 
     /**
      * Select token dialog
