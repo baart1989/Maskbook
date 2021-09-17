@@ -6,7 +6,7 @@ import {
     FungibleTokenDetailed,
     isGreaterThan,
     isZero,
-    pow10,
+    formatAmount,
     TransactionStateType,
     useFungibleTokenBalance,
     useGasPrice,
@@ -40,7 +40,7 @@ export const TransferERC20 = memo<TransferERC20Props>(({ token }) => {
     )
 
     // transfer amount
-    const transferAmount = new BigNumber(amount || '0').multipliedBy(pow10(token.decimals)).toFixed()
+    const transferAmount = formatAmount(amount, token.decimals)
     const maxAmount = useMemo(() => {
         let amount_ = new BigNumber(tokenBalance || '0')
         amount_ =
@@ -56,19 +56,15 @@ export const TransferERC20 = memo<TransferERC20Props>(({ token }) => {
     )
 
     const onTransfer = useCallback(async () => {
-        await transferCallback(
-            new BigNumber(amount).multipliedBy(pow10(selectedToken.decimals)).toFixed(),
-            address,
-            undefined,
-            memo,
-        )
+        await transferCallback(formatAmount(amount, selectedToken.decimals), address, undefined, memo)
     }, [amount, address, memo, selectedToken.decimals, transferCallback])
 
     //#region validation
     const validationMessage = useMemo(() => {
         if (!transferAmount || isZero(transferAmount)) return t.wallets_transfer_error_amount_absence()
-        if (isGreaterThan(new BigNumber(amount).multipliedBy(pow10(selectedToken.decimals)).toFixed(), transferAmount))
+        if (isGreaterThan(formatAmount(amount, selectedToken.decimals), maxAmount)) {
             return t.wallets_transfer_error_insufficient_balance({ symbol: selectedToken.symbol ?? '' })
+        }
         if (!address) return t.wallets_transfer_error_address_absence()
         if (!EthereumAddress.isValid(address)) return t.wallets_transfer_error_invalid_address()
         return ''
