@@ -14,8 +14,8 @@ export function formatPrice(price: BigNumber.Value, decimalPlaces = 6) {
     return new BigNumber(price).decimalPlaces(decimalPlaces).toString()
 }
 
-export function formatAmount(amount: BigNumber.Value = '0', decimals = 0) {
-    return new BigNumber(amount).multipliedBy(pow10(decimals)).toFixed()
+export function formatAmount(amount: BigNumber.Value, decimals = 0) {
+    return new BigNumber(amount || '0').multipliedBy(pow10(decimals)).toFixed()
 }
 
 export function formatBalance(rawValue: BigNumber.Value = '0', decimals = 0, significant = decimals) {
