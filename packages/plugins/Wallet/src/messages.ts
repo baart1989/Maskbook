@@ -121,6 +121,20 @@ export type SelectTokenDialogEvent =
            */
           token?: FungibleTokenDetailed
       }
+export type SelectERC20TokenDialogEvent =
+    | {
+          open: true
+          props?: {
+              whitelist?: string[]
+              blacklist?: string[]
+              tokens?: FungibleTokenDetailed[]
+              selectedTokens?: string[]
+              onSelect?(token: FungibleTokenDetailed | null): void
+          }
+      }
+    | {
+          open: false
+      }
 
 export type SelectNftContractDialogEvent = {
     open: boolean
@@ -202,6 +216,10 @@ export interface WalletMessage {
      * Wallet Risk Warning dialog
      */
     walletRiskWarningDialogUpdated: WalletRiskWarningDialogEvent
+    /**
+     * Select token dialog
+     */
+    selectERC20TokenDialogUpdated: SelectERC20TokenDialogEvent
 
     walletsUpdated: void
     phrasesUpdated: void
